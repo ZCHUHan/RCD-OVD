@@ -444,7 +444,6 @@ class DeformableTransformer_CLIP_Q(nn.Module):
 
         # prepare input for decoder
         bs, _, c = memory.shape # c is hidden dim, 256
-        #print('memory shape', memory.shape, memory)
         if self.two_stage:
             warnings.warn("NOT recommended! since novel classes would be considered as background")
             output_memory, output_proposals = self.gen_encoder_output_proposals(
@@ -460,13 +459,10 @@ class DeformableTransformer_CLIP_Q(nn.Module):
 
             topk = self.two_stage_num_proposals
             nonBG = enc_outputs_class[..., :-1] # bs, (~5000---~15000), 65
-            #print('nonBG', nonBG.size())
             nonBG_enc_outputs_class = nonBG.reshape(enc_outputs_class.shape[0], -1)
 
             topk_proposals = torch.topk(nonBG_enc_outputs_class, topk, dim=1)[1] # should be: bs, num_queries
-            #print('topk_proposals', topk_proposals.size(), topk_proposals, 'max', max(topk_proposals[0]))
             topk_proposals = topk_proposals // (enc_outputs_class.shape[2]-1)
-            #print('after_topk_proposals', topk_proposals.size(), topk_proposals, 'max', max(topk_proposals[0]))
 
             topk_coords_unact = torch.gather(
                 enc_outputs_coord_unact, 1, topk_proposals.unsqueeze(-1).repeat(1, 1, 4)
@@ -478,18 +474,15 @@ class DeformableTransformer_CLIP_Q(nn.Module):
                 self.pos_trans(self.get_proposal_pos_embed(topk_coords_unact))
             )
             query_embed, tgt = torch.split(pos_trans_out, c, dim=2)
-            #print('query_embed', query_embed.size(), 'tgt', tgt.size()) # query_embed torch.Size([2, 100, 256]) tgt torch.Size([2, 100, 256])
 
             ## for clip condition query
             num_queries = query_embed.shape[1]
             patch_num = num_queries // len(text_query) # num_select_cat, 6
-            #print('text_query', len(text_query), 'num_query', num_queries, patch_num)
             text_query = text_query.repeat_interleave(patch_num, 0) # 12, 256 --> 12*25, 256 --> bs, 12*25, 256
             text_query = text_query.unsqueeze(0).expand(bs, -1, -1)
             tgt = tgt + text_query
         else:
             query_embed, tgt = torch.split(query_embed, c, dim=1)
-            #print('query_embed', query_embed.size(), query_embed, 'tgt', tgt.size(), tgt) # both 300, 256
             num_queries = len(query_embed)
             patch_num = num_queries // len(text_query)
             query_embed = query_embed.unsqueeze(0).expand(bs, -1, -1)
@@ -500,22 +493,6 @@ class DeformableTransformer_CLIP_Q(nn.Module):
 
             reference_points = self.reference_points(query_embed).sigmoid()
             init_reference_out = reference_points
-
-        ## the decoder mask trick
-#        decoder_mask = (
-#            torch.ones(
-#                num_queries,
-#                num_queries,
-#                device=query_embed.device,
-#            )
-#            * float("-inf")
-#        )
-#        for i in range(patch_num):
-#            decoder_mask[
-#                i * patch_num : (i + 1) * patch_num,
-#                i * patch_num : (i + 1) * patch_num,
-#            ] = 0
-        #print('decoder_mask', len(torch.nonzero(decoder_mask)), torch.nonzero(decoder_mask))
 
         # decoder
         hs, inter_references = self.decoder(
@@ -529,20 +506,6 @@ class DeformableTransformer_CLIP_Q(nn.Module):
             src_padding_mask=mask_flatten,
             #tgt_mask=decoder_mask,
         )
-
-#        memory_features = []
-#        spatial_index = 0
-#        for lvl in range(len(spatial_shapes)):
-#            h, w = spatial_shapes[lvl]
-#            memory_lvl = (
-#                memory[:, spatial_index : spatial_index + h * w, :]
-#                .reshape(bs, h, w, c)
-#                .permute(0, 3, 1, 2)
-#                .contiguous()
-#            )
-#            memory_features.append(memory_lvl)
-#            spatial_index += h * w
-
         inter_references_out = inter_references
         if self.two_stage:
             return (hs, init_reference_out, inter_references_out, enc_outputs_class, enc_outputs_coord_unact, cache) #, memory_features

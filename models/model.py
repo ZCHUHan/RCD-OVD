@@ -61,7 +61,6 @@ class CLIPDeformableDETR(nn.Module):
         hidden_dim = transformer.d_model #256
         clip_hidden_dim = embedding_classifier.shape[1] # 512
         # self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
-        #print('class_emb_weight', self.class_embed.weight.size(), '--', self.class_embed.weight, '--', self.class_embed.bias)
         self.bbox_embed = MLP(hidden_dim, hidden_dim, 4, 3)
         self.num_feature_levels = num_feature_levels
         if not two_stage:
@@ -119,7 +118,6 @@ class CLIPDeformableDETR(nn.Module):
         self.feature_align = nn.Linear(hidden_dim, clip_hidden_dim) # 256, 512
         nn.init.xavier_uniform_(self.feature_align.weight)
         nn.init.constant_(self.feature_align.bias, 0)
-        #self.feature_align = FFN(hidden_dim, clip_hidden_dim, clip_hidden_dim)
 
         nn.init.constant_(self.bbox_embed.layers[-1].weight.data, 0)
         nn.init.constant_(self.bbox_embed.layers[-1].bias.data, 0)
@@ -484,7 +482,6 @@ class CLIPDeformableDETR(nn.Module):
         select_id = uniq_labels.tolist()
 
         if len(select_id) < self.max_len:
-
             pad_len = self.max_len - len(uniq_labels)
             ordered_novel_prior = torch.stack([t["prior_labels"] for t in targets], dim=1) # stacking along the 1-th dim ensures picking most likely novel categories within the batched imgs simultaneously
             ordered_novel_prior = ordered_novel_prior.reshape(1, -1).squeeze().tolist()
