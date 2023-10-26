@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------------
-# OV DETR
+# Modified OV DETR
 # Copyright (c) S-LAB, Nanyang Technological University. All Rights Reserved.
 # ------------------------------------------------------------------------
 # Modified from Deformable DETR
@@ -8,7 +8,6 @@
 # Modified from DETR (https://github.com/facebookresearch/detr)
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 # ------------------------------------------------------------------------
-
 
 import math
 import sys
